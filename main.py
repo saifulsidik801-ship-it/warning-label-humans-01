@@ -20,6 +20,10 @@ Judge criteria, most important first:
   5. Stays inside 160 characters, uses the whole line, no filler, no
      second idea, no repeated joke.
 
+  A polish step then verifies the winner is a single sentence whose
+  punch lands at the end, and prefers lines that use more of the 160
+  characters when the comedy scores tie.
+
 Scoring below is 1-5 per criterion (2-5); criterion 1 is a pass/fail
 gate applied to every candidate before scoring.
 """
@@ -77,20 +81,34 @@ MAX_CHARS = 160
 
 
 def is_valid_label(line: str) -> bool:
-    """Criterion 1 gate + the sealed scorer's gate: one line, 1-160 chars."""
+    """Criterion 1 gate + the sealed scorer's gate: one line, 1-160 chars.
+
+    Polish: the label must be a single sentence (exactly one terminal
+    full stop, at the very end) so the punch cannot leak into a second
+    sentence, and it must not repeat the rejected line.
+    """
     return (
         isinstance(line, str)
         and 1 <= len(line) <= MAX_CHARS
         and line.strip() == line
         and "\n" not in line
         and line.startswith(("WARNING:", "CAUTION:"))
+        and line.count(".") == 1
+        and line.endswith(".")
+        and line != REJECTED
     )
+
+
+def length_bonus(line: str) -> int:
+    """Criterion 5 tiebreak: prefer lines that use more of the 160 chars."""
+    return 1 if len(line) >= 100 else 0
 
 
 def score(candidate):
     line, turn, recognition, voice, tightness = candidate
-    # Judge order: turn first, then recognition, then voice, then tightness.
-    return (turn, recognition, voice, tightness)
+    # Judge order: turn first, then recognition, then voice, then
+    # tightness, then length use as the final tiebreak.
+    return (turn, recognition, voice, tightness, length_bonus(line))
 
 
 def pick_best():
